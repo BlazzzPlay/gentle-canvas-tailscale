@@ -1,0 +1,44 @@
+{
+  "name": "gentle-canvas-tailscale",
+  "version": "0.1.0",
+  "description": "Open the Gentle Shell design canvas from your other devices over Tailscale (tailnet only).",
+  "license": "MIT",
+  "type": "module",
+  "author": "Fabian Mendoza (https://github.com/BlazzzPlay)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlazzzPlay/gentle-canvas-tailscale.git"
+  },
+  "homepage": "https://github.com/BlazzzPlay/gentle-canvas-tailscale#readme",
+  "bugs": {
+    "url": "https://github.com/BlazzzPlay/gentle-canvas-tailscale/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "gentle-shell",
+    "gentle-design",
+    "tailscale",
+    "canvas"
+  ],
+  "files": [
+    "extensions",
+    "src",
+    "assets/icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "./extensions/canvas-tailscale.ts"
+    ]
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
