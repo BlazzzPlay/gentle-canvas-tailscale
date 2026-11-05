@@ -123,3 +123,13 @@ test('openCanvas under funnel refuses and starts nothing', async () => {
   assert.equal(r.level, 'error');
   assert.deepEqual(log, []);
 });
+
+test('two openCanvas calls at once start a single proxy', async () => {
+  const log = [];
+  const c = createController({ proxyPort: 34316, readTailscale: async () => okTs, createProxy: fakeProxyFactory(log) });
+  const [a, b] = await Promise.all([c.openCanvas('http://127.0.0.1:5/cccccccccccccccccccc/d/y/'), c.openCanvas('http://127.0.0.1:5/cccccccccccccccccccc/d/y/')]);
+  assert.equal(a.level, 'info');
+  assert.deepEqual(b, a);
+  assert.equal(log.filter((e) => e[0] === 'start').length, 1);
+  await c.stop();
+});

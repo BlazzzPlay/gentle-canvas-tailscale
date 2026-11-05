@@ -44,8 +44,14 @@ export function createController({ proxyPort = 34316, publicPort = 8450, readTai
     return url ? { level: 'info', text: `Canvas local: ${canvasUrl}\nCanvas on your tailnet: ${url}` } : undefined;
   };
 
+  let starting;
   return {
-    async start() {
+    start() {
+      // Concurrent callers share one in-flight start instead of racing for the port.
+      starting ??= this.startOnce().finally(() => { starting = undefined; });
+      return starting;
+    },
+    async startOnce() {
       if (proxy) return urlMessage() ?? { level: 'info', text: `Proxy ready on ${publicOrigin}. ${OPEN_HINT}` };
       const exposure = resolveExposure({ ...(await readTailscale()), proxyPort, publicPort });
       if (!exposure.ok) return { level: exposure.reason === 'funnel' ? 'error' : 'warning', text: exposure.message };
