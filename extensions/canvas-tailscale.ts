@@ -57,13 +57,18 @@ export default function canvasTailscale(pi: ExtensionAPI): void {
 	});
 
 	// The canvas never writes its URL anywhere; gentle_design open/list return it.
-	pi.on("tool_execution_end", (event, ctx) => {
+	// Append the tailnet address to the tool result itself, so the model sees it
+	// and can hand it to the user (a ui.notify alone never reaches the model).
+	pi.on("tool_result", async (event, ctx) => {
 		if (event.toolName !== DESIGN_TOOL || event.isError) return;
-		const details = (event.result as { details?: { url?: unknown; canvas?: { url?: unknown } } } | undefined)?.details;
+		const details = event.details as { url?: unknown; canvas?: { url?: unknown } } | undefined;
 		const url = typeof details?.url === "string" ? details.url : typeof details?.canvas?.url === "string" ? details.canvas.url : undefined;
 		if (!url) return;
 		watch(ctx);
-		announce(url, ctx.ui);
+		const message = await controller.openCanvas(url);
+		const text = message.text.startsWith("Canvas local:") ? message.text : `Canvas local: ${url}\n${message.text}`;
+		if (message.level !== "info") ctx.ui.notify(text, message.level as "warning" | "error");
+		return { content: [...event.content, { type: "text", text }], structuredContent: event.structuredContent };
 	});
 
 	pi.on("session_shutdown", async () => {
