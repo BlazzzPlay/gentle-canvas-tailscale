@@ -68,3 +68,28 @@ test('funnel on an unrelated port does not block', () => {
   const s = { Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: P } } }, 'box.tailnet.ts.net:443': { Handlers: { '/': { Proxy: 'http://127.0.0.1:3000' } } } }, AllowFunnel: { 'box.tailnet.ts.net:443': true } };
   assert.equal(resolveExposure({ status, serve: s, proxyPort: 34316 }).publicOrigin, 'https://box.tailnet.ts.net:8450');
 });
+
+// Foreground sessions (`tailscale funnel 34316` without --bg) keep their config
+// under Foreground.<session>; and any target spelling that reaches the proxy
+// port on a local address counts.
+test('refuses: foreground funnel session', () => {
+  const fg = { Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: P } } } }, Foreground: { s1: { TCP: { '443': { HTTPS: true } }, Web: { 'box.tailnet.ts.net:443': { Handlers: { '/': { Proxy: P } } } }, AllowFunnel: { 'box.tailnet.ts.net:443': true } } } };
+  assert.equal(resolveExposure({ status, serve: fg, proxyPort: 34316 }).reason, 'funnel');
+});
+
+test('refuses: foreground TCP forward under top-level funnel', () => {
+  const fg = { Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: P } } } }, AllowFunnel: { 'box.tailnet.ts.net:443': true }, Foreground: { s1: { TCP: { '443': { TCPForward: '0.0.0.0:34316' } } } } };
+  assert.equal(resolveExposure({ status, serve: fg, proxyPort: 34316 }).reason, 'funnel');
+});
+
+for (const target of ['http://0.0.0.0:34316', 'http://127.0.0.1:34316/x', 'HTTP://LOCALHOST:34316', 'http://[::1]:34316', 'https+insecure://127.0.0.1:34316', 'http://127.1.2.3:34316', 'localhost:34316', '34316']) {
+  test(`refuses funnel via ${target}`, () => {
+    const serve = { Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: P } } }, 'box.tailnet.ts.net:443': { Handlers: { '/': { Proxy: target } } } }, AllowFunnel: { 'box.tailnet.ts.net:443': true } };
+    assert.equal(resolveExposure({ status, proxyPort: 34316, serve }).reason, 'funnel');
+  });
+}
+
+test('a remote host on the same port is not the proxy', () => {
+  const serve = { Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: 'http://10.0.0.5:34316' } } } } };
+  assert.equal(resolveExposure({ status, proxyPort: 34316, serve }).reason, 'no-serve');
+});

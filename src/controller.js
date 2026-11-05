@@ -26,8 +26,11 @@ export function createController({ proxyPort = 34316, publicPort = 8450, readTai
   }
 
   async function recheck() {
-    if (!proxy) return;
+    const checked = proxy;
+    if (!checked) return;
     const exposure = resolveExposure({ ...(await readTailscale()), proxyPort, publicPort });
+    // A stop/start while reading replaced the proxy; its own rechecks own it.
+    if (proxy !== checked) return;
     if (exposure.ok && exposure.publicOrigin === publicOrigin) return;
     if (!(await shutdown())) return;
     const text = exposure.ok ? `Tailscale now serves the proxy on ${exposure.publicOrigin}; run /canvas:tailscale again.` : exposure.message;

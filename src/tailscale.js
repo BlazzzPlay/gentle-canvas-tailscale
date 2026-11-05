@@ -17,9 +17,20 @@ export async function readTailscale() {
   return { status, serve };
 }
 
-function targetsPort(proxy, port) {
-  const s = String(proxy).trim().replace(/\/+$/, '');
-  return s === String(port) || s === `http://127.0.0.1:${port}` || s === `http://localhost:${port}` || s === `127.0.0.1:${port}` || s === `localhost:${port}`;
+// True when a serve target (any scheme, case, path, or bare host:port / port)
+// reaches `port` on this machine: localhost, 127.0.0.0/8, 0.0.0.0 or ::1/::.
+function targetsPort(target, port) {
+  const s = String(target).trim();
+  if (/^\d+$/.test(s)) return Number(s) === port;
+  let url;
+  try {
+    url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : `tcp://${s}`);
+  } catch {
+    return false;
+  }
+  if (Number(url.port) !== port) return false;
+  const h = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  return h === 'localhost' || h === '0.0.0.0' || h === '::1' || h === '::' || /^127\.\d+\.\d+\.\d+$/.test(h);
 }
 
 /**
@@ -30,19 +41,26 @@ export function resolveExposure({ status, serve, proxyPort, publicPort = 8450 })
   if (!host) return { ok: false, reason: 'no-tailscale', message: 'Tailscale is not running or not logged in (`tailscale status` failed).' };
   // Every serve entry that reaches the proxy, on any path or as a raw TCP
   // forward. Funnel on any of them exposes the canvas, so all are checked first.
+  // Foreground sessions (`tailscale funnel <port>` without --bg) live under
+  // Foreground.<session> with their own Web/TCP/AllowFunnel.
   const reaching = [];
+  const funnel = { ...(serve?.AllowFunnel ?? {}) };
   let rootMapping;
-  for (const [hostPort, web] of Object.entries(serve?.Web ?? {})) {
-    for (const [path, handler] of Object.entries(web?.Handlers ?? {})) {
-      if (!handler?.Proxy || !targetsPort(handler.Proxy, proxyPort)) continue;
-      reaching.push(hostPort);
-      if (path === '/' && !rootMapping) rootMapping = hostPort;
+  const configs = [{ config: serve, background: true }, ...Object.values(serve?.Foreground ?? {}).map((config) => ({ config, background: false }))];
+  for (const { config, background } of configs) {
+    Object.assign(funnel, config?.AllowFunnel ?? {});
+    for (const [hostPort, web] of Object.entries(config?.Web ?? {})) {
+      for (const [path, handler] of Object.entries(web?.Handlers ?? {})) {
+        if (!handler?.Proxy || !targetsPort(handler.Proxy, proxyPort)) continue;
+        reaching.push(hostPort);
+        if (background && path === '/' && !rootMapping) rootMapping = hostPort;
+      }
+    }
+    for (const [port, tcp] of Object.entries(config?.TCP ?? {})) {
+      if (tcp?.TCPForward && targetsPort(tcp.TCPForward, proxyPort)) reaching.push(`${host}:${port}`);
     }
   }
-  for (const [port, tcp] of Object.entries(serve?.TCP ?? {})) {
-    if (tcp?.TCPForward && targetsPort(tcp.TCPForward, proxyPort)) reaching.push(`${host}:${port}`);
-  }
-  const funneled = reaching.find((hostPort) => serve?.AllowFunnel?.[hostPort]);
+  const funneled = reaching.find((hostPort) => funnel[hostPort]);
   if (funneled) {
     return { ok: false, reason: 'funnel', message: `${funneled} is exposed to the internet with tailscale funnel. This extension is tailnet-only: run \`tailscale funnel --https=${funneled.split(':')[1]} off\` and keep only \`tailscale serve\`.` };
   }

@@ -81,3 +81,27 @@ test('stops the proxy when funnel is enabled after start', async () => {
   assert.equal(lost[0].level, 'error');
   assert.deepEqual(c.status(), { level: 'info', text: 'Canvas proxy is not running. Start it with /canvas:tailscale.' });
 });
+
+test('a recheck that started before stop/start never stops the new proxy', async () => {
+  const log = [];
+  let release;
+  let calls = 0;
+  const funnel = { ...okTs, serve: { ...okTs.serve, AllowFunnel: { 'box.tailnet.ts.net:8450': true } } };
+  const readTailscale = async () => {
+    calls += 1;
+    if (calls === 2) return new Promise((r) => { release = () => r(funnel); }); // the first recheck hangs
+    return okTs;
+  };
+  const lost = [];
+  const c = createController({ proxyPort: 34316, recheckMs: 5, readTailscale, createProxy: fakeProxyFactory(log), onExposureLost: (m) => lost.push(m) });
+  await c.start();
+  await new Promise((r) => setTimeout(r, 20)); // recheck #1 is now waiting
+  await c.stop();
+  await c.start();
+  release();
+  await new Promise((r) => setTimeout(r, 5));
+  assert.deepEqual(log.map((e) => e[0]).slice(0, 3), ['start', 'stop', 'start']);
+  assert.deepEqual(lost, []);
+  assert.notEqual(c.status().text, 'Canvas proxy is not running. Start it with /canvas:tailscale.');
+  await c.stop();
+});
