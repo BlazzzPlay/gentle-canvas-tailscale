@@ -13,7 +13,10 @@ function port(name: string, fallback: number): number {
 }
 
 export default function canvasTailscale(pi: ExtensionAPI): void {
+	// Last UI seen, so a background exposure check can tell the user it stopped.
+	let notify: ((text: string, level: "info" | "warning" | "error") => void) | undefined;
 	const controller = createController({
+		onExposureLost: (message) => notify?.(message.text, message.level),
 		proxyPort: port("GENTLE_CANVAS_TAILSCALE_PROXY_PORT", 34316),
 		publicPort: port("GENTLE_CANVAS_TAILSCALE_PUBLIC_PORT", 8450),
 	});
@@ -21,6 +24,7 @@ export default function canvasTailscale(pi: ExtensionAPI): void {
 	pi.registerCommand("canvas:tailscale", {
 		description: "Serve the design canvas on your tailnet: /canvas:tailscale [start|stop|status]",
 		handler: async (args, ctx) => {
+			notify = (text, level) => ctx.ui.notify(text, level);
 			const action = String(args ?? "").trim() || "start";
 			let message;
 			if (action === "start") {

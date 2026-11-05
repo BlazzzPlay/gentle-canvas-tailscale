@@ -62,7 +62,8 @@ The tailnet host name is read from `tailscale status --json`; the public origin 
 
 ## Security
 
-- **Tailnet only.** The proxy deliberately bypasses the canvas's same-origin guard for your tailnet. The extension **refuses to start** when `tailscale funnel` exposes the proxy port to the internet. Never put it behind funnel or any public tunnel.
+- **Tailnet only.** The proxy deliberately bypasses the canvas's same-origin guard for your tailnet. The extension **refuses to start** when `tailscale funnel` exposes the proxy to the internet (through any serve entry, path handler or TCP forward that reaches it), and while running it re-checks every 15 seconds and **stops the proxy** if funnel is turned on later. Never put it behind funnel or any public tunnel.
+- Discovery probes only your own loopback listeners, and only with the token from the request path; a tailnet client sending made-up tokens learns nothing beyond a `502`.
 - The proxy listens on `127.0.0.1` only and never changes your Tailscale configuration; it only reads `tailscale status` and `tailscale serve status`.
 - Anyone on your tailnet who has the current URL (with its token) can view and comment on your designs, exactly as on your own machine.
 

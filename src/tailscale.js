@@ -28,13 +28,26 @@ function targetsPort(proxy, port) {
 export function resolveExposure({ status, serve, proxyPort, publicPort = 8450 }) {
   const host = status?.Self?.DNSName?.replace(/\.$/, '');
   if (!host) return { ok: false, reason: 'no-tailscale', message: 'Tailscale is not running or not logged in (`tailscale status` failed).' };
+  // Every serve entry that reaches the proxy, on any path or as a raw TCP
+  // forward. Funnel on any of them exposes the canvas, so all are checked first.
+  const reaching = [];
+  let rootMapping;
   for (const [hostPort, web] of Object.entries(serve?.Web ?? {})) {
-    const handler = web?.Handlers?.['/'];
-    if (!handler?.Proxy || !targetsPort(handler.Proxy, proxyPort)) continue;
-    if (serve?.AllowFunnel?.[hostPort]) {
-      return { ok: false, reason: 'funnel', message: `${hostPort} is exposed to the internet with tailscale funnel. This extension is tailnet-only: run \`tailscale funnel --https=${hostPort.split(':')[1]} off\` and keep only \`tailscale serve\`.` };
+    for (const [path, handler] of Object.entries(web?.Handlers ?? {})) {
+      if (!handler?.Proxy || !targetsPort(handler.Proxy, proxyPort)) continue;
+      reaching.push(hostPort);
+      if (path === '/' && !rootMapping) rootMapping = hostPort;
     }
-    const [h, port] = hostPort.split(':');
+  }
+  for (const [port, tcp] of Object.entries(serve?.TCP ?? {})) {
+    if (tcp?.TCPForward && targetsPort(tcp.TCPForward, proxyPort)) reaching.push(`${host}:${port}`);
+  }
+  const funneled = reaching.find((hostPort) => serve?.AllowFunnel?.[hostPort]);
+  if (funneled) {
+    return { ok: false, reason: 'funnel', message: `${funneled} is exposed to the internet with tailscale funnel. This extension is tailnet-only: run \`tailscale funnel --https=${funneled.split(':')[1]} off\` and keep only \`tailscale serve\`.` };
+  }
+  if (rootMapping) {
+    const [h, port] = rootMapping.split(':');
     return { ok: true, publicOrigin: port === '443' ? `https://${h}` : `https://${h}:${port}`, host: h };
   }
   return { ok: false, reason: 'no-serve', message: `No tailscale serve mapping points to the proxy. Run once: tailscale serve --bg --https=${publicPort} http://127.0.0.1:${proxyPort}` };

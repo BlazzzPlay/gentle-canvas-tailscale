@@ -66,3 +66,18 @@ test('status reports state without starting anything', async () => {
   assert.deepEqual(c.status(), { level: 'info', text: 'Proxy running on 127.0.0.1:34316 behind https://box.tailnet.ts.net:8450. Open a design (gentle_design open or /gentle:design) to get its tailnet URL.' });
   assert.equal(log.length, 1);
 });
+
+test('stops the proxy when funnel is enabled after start', async () => {
+  const log = [];
+  const lost = [];
+  let ts = okTs;
+  const c = createController({ proxyPort: 34316, recheckMs: 10, readTailscale: async () => ts, createProxy: fakeProxyFactory(log), onExposureLost: (m) => lost.push(m) });
+  await c.start();
+  ts = { ...okTs, serve: { ...okTs.serve, AllowFunnel: { 'box.tailnet.ts.net:8450': true } } };
+  await new Promise((r) => setTimeout(r, 60));
+  assert.deepEqual(log.map((e) => e[0]), ['start', 'stop']);
+  assert.equal(lost.length, 1);
+  assert.match(lost[0].text, /tailscale funnel/);
+  assert.equal(lost[0].level, 'error');
+  assert.deepEqual(c.status(), { level: 'info', text: 'Canvas proxy is not running. Start it with /canvas:tailscale.' });
+});

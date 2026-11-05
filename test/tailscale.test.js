@@ -47,3 +47,24 @@ test('publicUrlFor swaps the loopback origin of a canvas URL', () => {
   assert.equal(publicUrlFor('http://127.0.0.1:37643/tok_tok_tok_tok_tok/d/site/', 'https://box.tailnet.ts.net:8450'), 'https://box.tailnet.ts.net:8450/tok_tok_tok_tok_tok/d/site/');
   assert.equal(publicUrlFor('not a url', 'https://x'), undefined);
 });
+
+// Funnel on ANY entry that reaches the proxy must refuse, not only the first
+// serve mapping: other Web entries, non-root path handlers and TCP forwards.
+const P = 'http://127.0.0.1:34316';
+for (const [name, serve] of Object.entries({
+  'funnel on a second Web entry': { Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: P } } }, 'box.tailnet.ts.net:443': { Handlers: { '/': { Proxy: P } } } }, AllowFunnel: { 'box.tailnet.ts.net:443': true } },
+  'funnel on a non-root path handler': { Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: P } } }, 'box.tailnet.ts.net:443': { Handlers: { '/c': { Proxy: P + '/' } } } }, AllowFunnel: { 'box.tailnet.ts.net:443': true } },
+  'funnel on a TCP forward': { TCP: { '443': { TCPForward: '127.0.0.1:34316' } }, Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: P } } } }, AllowFunnel: { 'box.tailnet.ts.net:443': true } },
+})) {
+  test(`refuses: ${name}`, () => {
+    const r = resolveExposure({ status, serve, proxyPort: 34316 });
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, 'funnel');
+    assert.match(r.message, /box\.tailnet\.ts\.net:443 is exposed to the internet with tailscale funnel/);
+  });
+}
+
+test('funnel on an unrelated port does not block', () => {
+  const s = { Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: P } } }, 'box.tailnet.ts.net:443': { Handlers: { '/': { Proxy: 'http://127.0.0.1:3000' } } } }, AllowFunnel: { 'box.tailnet.ts.net:443': true } };
+  assert.equal(resolveExposure({ status, serve: s, proxyPort: 34316 }).publicOrigin, 'https://box.tailnet.ts.net:8450');
+});
