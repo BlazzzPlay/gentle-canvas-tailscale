@@ -17,7 +17,7 @@ test('start serves the tailnet origin and reports the public canvas URL', async 
   c.recordCanvasUrl('http://127.0.0.1:37643/tok_tok_tok_tok_tok/d/site/');
   const r = await c.start();
   assert.deepEqual(log, [['start', 34316, 'https://box.tailnet.ts.net:8450']]);
-  assert.deepEqual(r, { level: 'info', text: 'Canvas on your tailnet: https://box.tailnet.ts.net:8450/tok_tok_tok_tok_tok/d/site/' });
+  assert.deepEqual(r, { level: 'info', text: 'Canvas local: http://127.0.0.1:37643/tok_tok_tok_tok_tok/d/site/\nCanvas on your tailnet: https://box.tailnet.ts.net:8450/tok_tok_tok_tok_tok/d/site/' });
   assert.deepEqual(await c.start(), r, 'start twice does not start a second proxy');
   assert.equal(log.length, 1);
 });
@@ -104,4 +104,22 @@ test('a recheck that started before stop/start never stops the new proxy', async
   assert.deepEqual(lost, []);
   assert.notEqual(c.status().text, 'Canvas proxy is not running. Start it with /canvas:tailscale.');
   await c.stop();
+});
+
+test('openCanvas starts the proxy and reports the local and tailnet addresses', async () => {
+  const log = [];
+  const c = createController({ proxyPort: 34316, readTailscale: async () => okTs, createProxy: fakeProxyFactory(log) });
+  const r = await c.openCanvas('http://127.0.0.1:5/cccccccccccccccccccc/d/y/');
+  assert.deepEqual(r, { level: 'info', text: 'Canvas local: http://127.0.0.1:5/cccccccccccccccccccc/d/y/\nCanvas on your tailnet: https://box.tailnet.ts.net:8450/cccccccccccccccccccc/d/y/' });
+  assert.deepEqual(log, [['start', 34316, 'https://box.tailnet.ts.net:8450']]);
+  await c.stop();
+});
+
+test('openCanvas under funnel refuses and starts nothing', async () => {
+  const log = [];
+  const ts = { ...okTs, serve: { ...okTs.serve, AllowFunnel: { 'box.tailnet.ts.net:8450': true } } };
+  const c = createController({ proxyPort: 34316, readTailscale: async () => ts, createProxy: fakeProxyFactory(log) });
+  const r = await c.openCanvas('http://127.0.0.1:5/cccccccccccccccccccc/d/y/');
+  assert.equal(r.level, 'error');
+  assert.deepEqual(log, []);
 });

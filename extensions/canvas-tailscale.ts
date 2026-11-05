@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createController } from "../src/controller.js";
+import { watchNotify } from "../src/notice.js";
 
 // /canvas:tailscale [start|stop|status]: serve the gentle-design canvas to your
 // tailnet through a loopback proxy behind `tailscale serve` (never funnel).
@@ -21,10 +22,25 @@ export default function canvasTailscale(pi: ExtensionAPI): void {
 		publicPort: port("GENTLE_CANVAS_TAILSCALE_PUBLIC_PORT", 8450),
 	});
 
+	// A canvas URL appeared (gentle_design tool or the /gentle:design notice):
+	// start the proxy if needed and show the local and tailnet addresses at once.
+	const announce = (url: string, ui: { notify: (text: string, level: "info" | "warning" | "error") => void }) => {
+		void controller.openCanvas(url).then((message) => {
+			const text = message.text.startsWith("Canvas local:") ? message.text : `Canvas local: ${url}\n${message.text}`;
+			ui.notify(text, message.level as "info" | "warning" | "error");
+		});
+	};
+	const watch = (ctx: { ui: { notify: (text: string, level: "info" | "warning" | "error") => void } }) => {
+		notify = (text, level) => ctx.ui.notify(text, level);
+		watchNotify(ctx.ui, (url: string) => announce(url, ctx.ui));
+	};
+	pi.on("session_start", (_event, ctx) => watch(ctx));
+	pi.on("input", (_event, ctx) => watch(ctx));
+
 	pi.registerCommand("canvas:tailscale", {
 		description: "Serve the design canvas on your tailnet: /canvas:tailscale [start|stop|status]",
 		handler: async (args, ctx) => {
-			notify = (text, level) => ctx.ui.notify(text, level);
+			watch(ctx);
 			const action = String(args ?? "").trim() || "start";
 			let message;
 			if (action === "start") {
@@ -46,8 +62,8 @@ export default function canvasTailscale(pi: ExtensionAPI): void {
 		const details = (event.result as { details?: { url?: unknown; canvas?: { url?: unknown } } } | undefined)?.details;
 		const url = typeof details?.url === "string" ? details.url : typeof details?.canvas?.url === "string" ? details.canvas.url : undefined;
 		if (!url) return;
-		const publicUrl = controller.recordCanvasUrl(url);
-		if (publicUrl) ctx.ui.notify(`Canvas on your tailnet: ${publicUrl}`, "info");
+		watch(ctx);
+		announce(url, ctx.ui);
 	});
 
 	pi.on("session_shutdown", async () => {

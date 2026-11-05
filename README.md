@@ -43,11 +43,14 @@ tailscale serve --bg --https=8450 http://127.0.0.1:34316
 /canvas:tailscale stop     stop the proxy
 ```
 
-Then open a design (`gentle_design open` or `/gentle:design`). The extension shows its tailnet URL, for example:
+Then open a design (`gentle_design open` or `/gentle:design`). The extension starts the proxy if it is not running yet and shows both addresses at once, for example:
 
 ```text
+Canvas local: http://127.0.0.1:<port>/<token>/d/<design>/
 Canvas on your tailnet: https://my-box.my-tailnet.ts.net:8450/<token>/d/<design>/
 ```
+
+`/gentle:design` shares its URL only through its on-screen notice, so the extension watches the notices Pi shows (it reads `Design canvas: <loopback url>` and passes every notice through unchanged).
 
 The proxy stops with the Pi session. When the canvas restarts, its token changes: open the design again to get the new URL. No restart of the proxy is needed.
 

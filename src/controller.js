@@ -41,7 +41,7 @@ export function createController({ proxyPort = 34316, publicPort = 8450, readTai
 
   const urlMessage = () => {
     const url = canvasUrl && publicUrlFor(canvasUrl, publicOrigin);
-    return url ? { level: 'info', text: `Canvas on your tailnet: ${url}` } : undefined;
+    return url ? { level: 'info', text: `Canvas local: ${canvasUrl}\nCanvas on your tailnet: ${url}` } : undefined;
   };
 
   return {
@@ -63,6 +63,15 @@ export function createController({ proxyPort = 34316, publicPort = 8450, readTai
     status() {
       if (!proxy) return { level: 'info', text: 'Canvas proxy is not running. Start it with /canvas:tailscale.' };
       return urlMessage() ?? { level: 'info', text: `Proxy running on 127.0.0.1:${proxyPort} behind ${publicOrigin}. ${OPEN_HINT}` };
+    },
+    /** Records a canvas URL and starts the proxy if needed; returns both addresses or why not. */
+    async openCanvas(url) {
+      canvasUrl = url;
+      try {
+        return await this.start();
+      } catch (error) {
+        return { level: 'error', text: `Canvas local: ${url}\nCould not start the canvas proxy: ${error.message}` };
+      }
     },
     /** Records a canvas URL; returns its tailnet URL when the proxy is running. */
     recordCanvasUrl(url) {
