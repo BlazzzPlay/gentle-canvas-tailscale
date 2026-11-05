@@ -93,3 +93,10 @@ test('a remote host on the same port is not the proxy', () => {
   const serve = { Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: 'http://10.0.0.5:34316' } } } } };
   assert.equal(resolveExposure({ status, proxyPort: 34316, serve }).reason, 'no-serve');
 });
+
+for (const target of ['http://[::ffff:127.0.0.1]:34316', 'http://[::ffff:0.0.0.0]:34316', 'http://[::ffff:7f00:1]:34316']) {
+  test(`refuses funnel via IPv4-mapped ${target}`, () => {
+    const serve = { Web: { 'box.tailnet.ts.net:8450': { Handlers: { '/': { Proxy: P } } }, 'box.tailnet.ts.net:443': { Handlers: { '/': { Proxy: target } } } }, AllowFunnel: { 'box.tailnet.ts.net:443': true } };
+    assert.equal(resolveExposure({ status, proxyPort: 34316, serve }).reason, 'funnel');
+  });
+}

@@ -30,6 +30,10 @@ function targetsPort(target, port) {
   }
   if (Number(url.port) !== port) return false;
   const h = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  // IPv4-mapped IPv6 (::ffff:127.x, ::ffff:0.0.0.0) also reaches the IPv4
+  // listener; Node's URL parser writes them as ::ffff:7fxx:xxxx and ::ffff:0:0.
+  const mapped = h.match(/^::ffff:(.+)$/)?.[1];
+  if (mapped && (/^127\./.test(mapped) || mapped === '0.0.0.0' || /^7f[0-9a-f]{2}:[0-9a-f]{1,4}$/.test(mapped) || mapped === '0:0')) return true;
   return h === 'localhost' || h === '0.0.0.0' || h === '::1' || h === '::' || /^127\.\d+\.\d+\.\d+$/.test(h);
 }
 
