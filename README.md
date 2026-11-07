@@ -1,5 +1,7 @@
 <p align="center"><img src="assets/social-preview.png" alt="gentle-canvas-tailscale: open the Gentle Shell design canvas from your tailnet"></p>
 
+<p align="center"><b>English</b> · <a href="README.es.md">Español</a></p>
+
 # gentle-canvas-tailscale
 
 Open the [Gentle Shell](https://gentlemanprogramming.com/gentle-hub/) **design canvas** (`gentle_design` / `/gentle:design`) from your phone, tablet or another laptop — **only inside your Tailscale tailnet**.
