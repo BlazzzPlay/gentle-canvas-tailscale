@@ -14,7 +14,7 @@ Interim solution until Gentle Shell supports remote canvas access itself.
 - T3 S2 inline: extension (/canvas:tailscale), URL capture, session_shutdown — commit: 6827196 [x]
 - T4 S2,S3 inline: README, icon, social preview — commit: 35cbb54 [x]
 - T5 S1-S3 verify: tests, pi load, live tailnet, gentle-ai-verify — commit: n/a [x]
-- T6 S3 inline: create public GitHub repo, push, topics — commit: n/a
+- T6 S3 inline: create public GitHub repo, push, topics — commit: n/a (v0.1.0), v0.1.1 [x]
 
 ## Log
 - L1 (user): "Retomá el canvas por Tailscale ... Siguiente paso: <dejarlo así / mover el proxy al repo con detección automática del puerto>" then "adelante".
@@ -23,3 +23,4 @@ Interim solution until Gentle Shell supports remote canvas access itself.
 - L4 (user): "y publicala con la etiqueta correspondeitne y hay que crear icono etc"
 - L5 evidence: Gentle Hub lists public repos by topic (gentle-shell-package + optional gentle-shell-extension); entries carry no icon field. pi installs git sources: `pi install git:github.com/<owner>/<repo>`. Origin proxy: web-porfolio scripts/canvas-tailscale-proxy.mjs (verifier D1 fixed with x-canvas-proxy mark).
 - L6 evidence: gentle-ai-verify round 1 FAIL (D1 funnel guard bypass: first-match only, non-root paths, TCP forwards) -> fixed 705e8cf (+ periodic recheck, D2). Round 2 FAIL (D1a Foreground sessions, D1b target spellings) -> fixed 8773629 (+ recheck race). Round 3 PASS (S1 met, S2 met, S4 met); advisory IPv4-mapped IPv6 fixed e21f36a. 37 tests green; tsc clean against pi 1.4.0 types; harness load + live tailnet e2e OK; not loaded in a real pi runtime yet.
+- L8 (user): "mejoremos lo pendinten". Evidence: 44 tests green; tsc --strict clean against pi types; loaded in a real pi runtime (`pi -ne -e extensions/canvas-tailscale.ts -p /canvas:tailscale` exit 0, bad path exit 1). Released v0.1.1 (1b75aed, cf8dc59, 2d206f9). Pending (user): social preview upload in GitHub Settings.

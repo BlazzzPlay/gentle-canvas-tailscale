@@ -1,6 +1,6 @@
 {
   "name": "gentle-canvas-tailscale",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Open the Gentle Shell design canvas from your other devices over Tailscale (tailnet only).",
   "license": "MIT",
   "type": "module",
