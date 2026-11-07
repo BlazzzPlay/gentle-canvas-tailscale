@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/icon.svg" width="112" alt=""></p>
+<p align="center"><img src="assets/social-preview.png" alt="gentle-canvas-tailscale: open the Gentle Shell design canvas from your tailnet"></p>
 
 # gentle-canvas-tailscale
 
@@ -43,7 +43,7 @@ tailscale serve --bg --https=8450 http://127.0.0.1:34316
 /canvas:tailscale stop     stop the proxy
 ```
 
-Then open a design (`gentle_design open` or `/gentle:design`). The extension starts the proxy if it is not running yet and shows both addresses at once, for example:
+Then open a design (`gentle_design open` or `/gentle:design`). The extension starts the proxy if it is not running yet and reports both addresses at once: `/gentle:design` shows them on screen, and `gentle_design open` appends them to the tool result so the agent can hand them to you. For example:
 
 ```text
 Canvas local: http://127.0.0.1:<port>/<token>/d/<design>/
@@ -80,6 +80,12 @@ The tailnet host name is read from `tailscale status --json`; the public origin 
 ```bash
 npm test   # node --test, no dependencies
 ```
+
+## Built with Gentle-AI
+
+<a href="https://github.com/Gentleman-Programming/gentle-ai">
+  <img width="220" src="https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/docs/assets/brand/built-with-gentle-ai.png" alt="Built with Gentle-AI" />
+</a>
 
 ## License
 
